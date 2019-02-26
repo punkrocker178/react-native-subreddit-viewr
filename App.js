@@ -13,11 +13,9 @@ import {
   StyleSheet,
   Text,
   View,
-  TextInput,
   Button,
   Alert,
   FlatList,
-  VirtualizedList,
   Image,
   TouchableOpacity,
   Linking
@@ -48,6 +46,7 @@ export default class App extends Component<Props> {
     this.getData = this.getData.bind(this);
   }
 
+  //Phân loại icon dựa theo link_flair_text trong json
   hardwareImage(flair_text) {
     let img;
     if (flair_text == null) {
@@ -122,10 +121,10 @@ export default class App extends Component<Props> {
   getData(){
     console.log("Fetching");
     fetch("https://www.reddit.com/r/buildapcsales.json?limit=50")
-      .then(response => {
+      .then(response => { // Lấy kết quả trả về rồi chuyển thành json
         return response.json();
       })
-      .then(responseJSON => {
+      .then(responseJSON => { //lưu kết quả json vào this, cập nhật trạng thái isLoading
         return this.setState(() => {
           return {
             isLoading: false,
@@ -134,44 +133,35 @@ export default class App extends Component<Props> {
         });
       })
       .catch(reject => {
-        return <Alert>No internet connection!</Alert>;
+        return <Alert>{reject}</Alert>;
       });
   }
 
   //Lifecyle method
   componentDidMount() {
-    // return fetch('https://facebook.github.io/react-native/movies.json')
-    // .then((response)=>response.json())
-    // .then((responseJson)=>{
-    //   this.setState(()=>{
-    //     return {isLoading:false, dataSource : responseJson.movies}
-    //   })
-    // })
     return this.getData();
   }
 
   render() {
-    if (!this.state.isLoading) {
-      // let movies = this.state.dataSource.map((val,key)=>{
-      //   return <View key={key} style = {styles.item}>
-      //     <Text>{val.title}</Text>
-      //   </View>
-      // });
+    //Xác định trạng thái isLoading để hiển thị dữ liệu
+    if (!this.state.isLoading) {//isLoading = false ; fetch thành công
+
       let post = this.state.dataSource;
       console.log(post.length);
       return (
         <View>
-          {/* {movies} */}
           <FlatList
             style={{
               margin: 10,
             }}
             data={post}
-            renderItem={({ item }) => {
-              //Find hardware img based on flair_text
+            renderItem={({ item }) => {//Xác định khuôn của phần tử trong danh sách
+
+              //Find hardware img based on link_flair_text
               let img = this.hardwareImage(item.data.link_flair_text);
+
               return (
-                <TouchableOpacity onPress={() => this.handleURL(item.data.url)}>
+                <TouchableOpacity onPress={() => this.handleURL(item.data.url)}> 
                   <View style={styles.item}>
                     <Image
                       style={{ width: 48, height: 48, marginEnd: 5 }}
@@ -183,7 +173,7 @@ export default class App extends Component<Props> {
               );
             }}
             keyExtractor={item => item.data.id}
-            ItemSeparatorComponent = {()=>{
+            ItemSeparatorComponent = {()=>{ //Component đường chia cắt các item trong danh sách
               return(
               <View
                 style={{
@@ -195,12 +185,12 @@ export default class App extends Component<Props> {
             }}
             ></View>
             )}}
-            onRefresh = {this.getData}
+            onRefresh = {this.getData} //Kéo để refresh
             refreshing = {this.state.isLoading}    
             />      
         </View>
       );
-    } else {
+    } else {// isLoading = true ; đang fetch dữ liệu hoặc không có mạng
       return (
         <View style={styles.container}>
           <Text> Loading </Text>
@@ -210,6 +200,7 @@ export default class App extends Component<Props> {
   }
 }
 
+//Styling
 const styles = StyleSheet.create({
   container: {
     flex: 1,
