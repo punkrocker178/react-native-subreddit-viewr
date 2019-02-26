@@ -45,6 +45,7 @@ export default class App extends Component<Props> {
     };
     this.hardwareImage = this.hardwareImage.bind(this);
     this.handleURL = this.handleURL.bind(this);
+    this.getData = this.getData.bind(this);
   }
 
   hardwareImage(flair_text) {
@@ -118,16 +119,9 @@ export default class App extends Component<Props> {
       .catch(err => console.error("An error occurred", err));
   }
 
-  //Lifecyle method
-  componentDidMount() {
-    // return fetch('https://facebook.github.io/react-native/movies.json')
-    // .then((response)=>response.json())
-    // .then((responseJson)=>{
-    //   this.setState(()=>{
-    //     return {isLoading:false, dataSource : responseJson.movies}
-    //   })
-    // })
-    return fetch("https://www.reddit.com/r/buildapcsales.json?limit=50")
+  getData(){
+    console.log("Fetching");
+    fetch("https://www.reddit.com/r/buildapcsales.json?limit=50")
       .then(response => {
         return response.json();
       })
@@ -142,6 +136,18 @@ export default class App extends Component<Props> {
       .catch(reject => {
         return <Alert>No internet connection!</Alert>;
       });
+  }
+
+  //Lifecyle method
+  componentDidMount() {
+    // return fetch('https://facebook.github.io/react-native/movies.json')
+    // .then((response)=>response.json())
+    // .then((responseJson)=>{
+    //   this.setState(()=>{
+    //     return {isLoading:false, dataSource : responseJson.movies}
+    //   })
+    // })
+    return this.getData();
   }
 
   render() {
@@ -188,7 +194,9 @@ export default class App extends Component<Props> {
                   marginBottom:5
             }}
             ></View>
-            )}}    
+            )}}
+            onRefresh = {this.getData}
+            refreshing = {this.state.isLoading}    
             />      
         </View>
       );
