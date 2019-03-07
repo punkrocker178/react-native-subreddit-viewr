@@ -18,7 +18,8 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
-  Linking
+  Linking,
+  ToastAndroid
 } from "react-native";
 
 import images from "./Icons/index";
@@ -37,65 +38,85 @@ export default class App extends Component<Props> {
   constructor(props) {
     super(props);
     this.state = {
-      input: "",
       isLoading: true,
-      dataSource: null
+      dataSource: null,
+      listingBefore: null,
+      listingAfter: null,
+      count:0
     };
     this.hardwareImage = this.hardwareImage.bind(this);
     this.handleURL = this.handleURL.bind(this);
     this.getData = this.getData.bind(this);
   }
 
-  //Phân loại icon dựa theo link_flair_text trong json
-  hardwareImage(flair_text) {
+  //Phân loại icon dựa theo itemType trong json
+  hardwareImage(itemType) {
     let img;
-    if (flair_text == null) {
+    if(itemType == null){
       img = images.Other;
-    } else {
-      switch (flair_text.toLowerCase()) {
-        case "monitor":
+    }else{
+      switch (itemType[0].toLowerCase()) {
+        case "[monitor]":
           img = images.Monitor;
           break;
-        case "cpu":
+        case "[cpu]":
           img = images.CPU;
           break;
-        case "gpu":
+        case "[gpu]":
           img = images.GPU;
           break;
-        case "psu":
+        case "[psu]":
           img = images.PSU;
           break;
-        case "ram":
-        case "memory":
+        case "[ram]":
+        case "[memory]":
           img = images.RAM;
           break;
-        case "cooler":
-        case "fan":
-        case "cooling":
+        case "[cooler]":
+        case "[fan]":
+        case "[cooling]":
+        case "[case fan]":
           img = images.Cooler;
           break;
-        case "keyboard":
+        case "[keyboard]":
           img = images.Keyboard;
           break;
-        case "mouse":
+        case "[mouse]":
           img = images.Mouse;
           break;
-        case "headphones":
+        case "[headphones]":
           img = images.Headphones;
           break;
-        case "ssd":
+        case "[ssd]":
           img = images.SSD;
           break;
-        case "motherboard":
-        case "mobo":
+        case "[motherboard]":
+        case "[mobo]":
           img = images.MOBO;
           break;
-        case "controller":
+        case "[controller]":
+        case "[console]":
           img = images.Controller;
           break;
-        case "hdd":
+        case "[hdd]":
           img = images.HDD;
           break;
+        case "[case]":
+          img = images.Case;
+          break;
+        case "[router]":
+          img = images.Router;
+          break;
+        case "[laptop]":
+          img =images.Laptop;
+        break;
+        case "[prebuilt]":
+          img = images.Prebuilt;
+        break;
+        case "[flash]":
+        case "[sd card]":
+          img = images.SD;
+        break;
         default:
           img = images.Other;
           break;
@@ -119,8 +140,13 @@ export default class App extends Component<Props> {
   }
 
   getData(){
-    console.log("Fetching");
-    fetch("https://www.reddit.com/r/buildapcsales.json?limit=50")
+    console.log("Fetching "+this.state.count);
+    let url = "https://www.reddit.com/r/buildapcsales/.json";
+    if(this.state.count>0){
+      url = url+"?after="+this.state.listingAfter;
+    }
+    ToastAndroid.show("Fetching "+this.state.count,ToastAndroid.SHORT);
+    fetch(url)
       .then(response => { // Lấy kết quả trả về rồi chuyển thành json
         return response.json();
       })
@@ -128,12 +154,14 @@ export default class App extends Component<Props> {
         return this.setState(() => {
           return {
             isLoading: false,
-            dataSource: responseJSON.data.children
+            dataSource: responseJSON.data.children,
+            listingAfter:responseJSON.data.after,
+            count: this.state.count+1
           };
         });
       })
       .catch(reject => {
-        return <Alert>{reject}</Alert>;
+        return(Alert.alert(reject.toString(),"Cant Connect to Reddit"))
       });
   }
 
@@ -157,17 +185,30 @@ export default class App extends Component<Props> {
             data={post}
             renderItem={({ item }) => {//Xác định khuôn của phần tử trong danh sách
 
-              //Find hardware img based on link_flair_text
-              let img = this.hardwareImage(item.data.link_flair_text);
-
+              //Find hardware img based on itemType
+              let itemType = item.data.title.match(/\[[0-9a-zA-Z\s]+\]/);
+              if(itemType == null){
+                  console.log("Cannot get item type: "+item.data.title);
+              }else{
+                console.log(itemType[0].toLowerCase());
+              }
+              let img = this.hardwareImage(itemType);
+              let thumbnail;
+              if(item.data.thumbnail == "default"){
+                thumbnail = images.Thumbnail;
+              }else{
+                thumbnail = {uri:item.data.thumbnail};
+              }
               return (
                 <TouchableOpacity onPress={() => this.handleURL(item.data.url)}> 
                   <View style={styles.item}>
                     <Image
-                      style={{ width: 48, height: 48, marginEnd: 5 }}
+                      style={{ width: 40, height: 40, marginEnd: 5 }}
                       source={img}
                     />
                     <Text style={{ flex: 5 }}> {item.data.title} </Text>
+                    <Image style ={{flex:1,height:50}}
+                      source={thumbnail}></Image>
                   </View>
                 </TouchableOpacity>
               );
@@ -182,11 +223,11 @@ export default class App extends Component<Props> {
                   backgroundColor: "#CED0CE",
                   marginTop:5,
                   marginBottom:5
-            }}
-            ></View>
+            }}></View>
             )}}
             onRefresh = {this.getData} //Kéo để refresh
-            refreshing = {this.state.isLoading}    
+            refreshing = {this.state.isLoading}
+           
             />      
         </View>
       );
