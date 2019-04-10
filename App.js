@@ -12,8 +12,8 @@ import {
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   View,
-  Button,
   Alert,
   FlatList,
   Image,
@@ -39,7 +39,7 @@ export default class App extends Component<Props> {
     super(props);
     this.state = {
       isLoading: true,
-      dataSource: null,
+      dataSource: [],
       listingBefore: null,
       listingAfter: null,
       count:0
@@ -47,6 +47,7 @@ export default class App extends Component<Props> {
     this.hardwareImage = this.hardwareImage.bind(this);
     this.handleURL = this.handleURL.bind(this);
     this.getData = this.getData.bind(this);
+    this.render_item= this.render_item.bind(this);
   }
 
   //Phân loại icon dựa theo itemType trong json
@@ -142,10 +143,11 @@ export default class App extends Component<Props> {
   getData(){
     console.log("Fetching "+this.state.count);
     let url = "https://www.reddit.com/r/buildapcsales/.json";
+    
     if(this.state.count>0){
       url = url+"?after="+this.state.listingAfter;
     }
-    ToastAndroid.show("Fetching "+this.state.count,ToastAndroid.SHORT);
+    if(this.state.dataSource.length<200){
     fetch(url)
       .then(response => { // Lấy kết quả trả về rồi chuyển thành json
         return response.json();
@@ -154,15 +156,29 @@ export default class App extends Component<Props> {
         return this.setState(() => {
           return {
             isLoading: false,
-            dataSource: responseJSON.data.children,
+            dataSource: [...this.state.dataSource,...responseJSON.data.children.map((obj)=>{
+              return {
+                      id:obj.data.id,
+                      title:obj.data.title, 
+                      time:obj.data.created_utc, 
+                      score:obj.data.score,
+                      num_comments:obj.data.num_comments,
+                      url:obj.data.url,
+                      perma_link:obj.data.permalink,
+                      thumbnail: obj.data.thumbnail,
+                      count: this.state.count++
+                    }
+            })],
             listingAfter:responseJSON.data.after,
-            count: this.state.count+1
           };
         });
       })
       .catch(reject => {
         return(Alert.alert(reject.toString(),"Cant Connect to Reddit"))
       });
+    }else{
+      console.log("Too many");
+    }
   }
 
   //Lifecyle method
@@ -170,63 +186,86 @@ export default class App extends Component<Props> {
     return this.getData();
   }
 
+  header(){
+    return(
+      <View>
+        <TextInput></TextInput>
+      </View>
+      )
+    }
+  
+  footer(){
+    return(
+      <View>
+        <Text>Loading</Text>
+      </View>
+    )
+  }
+
+  separator(){
+    return(
+      <View
+        style={{
+          height: 1,
+          width: "100%",
+          backgroundColor: "#CED0CE",
+          marginTop:5,
+          marginBottom:5
+    }}></View>
+    )
+  }
+
+  render_item({ item }){
+    //Xác định khuôn của phần tử trong danh sách
+    console.log(item.id+" "+item.title);
+      //Find hardware img based on itemType
+      let itemType = item.title.match(/\[[0-9a-zA-Z\s]+\]/);
+      if(itemType == null){
+          console.log("Cannot get item type: "+item.title);
+      }else{
+        //console.log(itemType[0].toLowerCase());
+      }
+      let img = this.hardwareImage(itemType);
+      let thumbnail;
+      if(item.thumbnail == "default"){
+        thumbnail = images.Thumbnail;
+      }else{
+        thumbnail = {uri:item.thumbnail};
+      }
+      return (
+        <TouchableOpacity onPress={() => this.handleURL(item.url)}> 
+          <View style={styles.item}>
+            <Image
+              style={{ width: 40, height: 40, marginEnd: 5 }}
+              source={img}
+            />
+            <Text style={{ flex: 5 }}> {item.title} </Text>
+            <Image style ={{flex:1,height:50}}
+              source={thumbnail}></Image>
+          </View>
+        </TouchableOpacity>
+      );
+  }
+
   render() {
     //Xác định trạng thái isLoading để hiển thị dữ liệu
     if (!this.state.isLoading) {//isLoading = false ; fetch thành công
-
       let post = this.state.dataSource;
-      console.log(post.length);
+      //console.log(post);
       return (
         <View>
           <FlatList
-            style={{
-              margin: 10,
-            }}
             data={post}
-            renderItem={({ item }) => {//Xác định khuôn của phần tử trong danh sách
-
-              //Find hardware img based on itemType
-              let itemType = item.data.title.match(/\[[0-9a-zA-Z\s]+\]/);
-              if(itemType == null){
-                  console.log("Cannot get item type: "+item.data.title);
-              }else{
-                console.log(itemType[0].toLowerCase());
-              }
-              let img = this.hardwareImage(itemType);
-              let thumbnail;
-              if(item.data.thumbnail == "default"){
-                thumbnail = images.Thumbnail;
-              }else{
-                thumbnail = {uri:item.data.thumbnail};
-              }
-              return (
-                <TouchableOpacity onPress={() => this.handleURL(item.data.url)}> 
-                  <View style={styles.item}>
-                    <Image
-                      style={{ width: 40, height: 40, marginEnd: 5 }}
-                      source={img}
-                    />
-                    <Text style={{ flex: 5 }}> {item.data.title} </Text>
-                    <Image style ={{flex:1,height:50}}
-                      source={thumbnail}></Image>
-                  </View>
-                </TouchableOpacity>
-              );
-            }}
-            keyExtractor={item => item.data.id}
-            ItemSeparatorComponent = {()=>{ //Component đường chia cắt các item trong danh sách
-              return(
-              <View
-                style={{
-                  height: 1,
-                  width: "100%",
-                  backgroundColor: "#CED0CE",
-                  marginTop:5,
-                  marginBottom:5
-            }}></View>
-            )}}
+            renderItem={this.render_item}
+            keyExtractor={item => item.id}
+            ItemSeparatorComponent = {this.separator}
+            ListHeaderComponent = {this.header}
+            ListFooterComponent = {this.footer}
+            onEndReached = {this.getData}
+            onEndReachedThreshold = {1}
             onRefresh = {this.getData} //Kéo để refresh
             refreshing = {this.state.isLoading}
+            maxToRenderPerBatch = {10}
            
             />      
         </View>
